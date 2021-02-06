@@ -1,0 +1,104 @@
+version: '3.4'
+
+services:
+    catalogdb:
+        container_name: catalogdb
+        restart: always
+        volumes:
+            - ~/site:/data/db
+        ports:
+            - "27017:27017"
+
+    basketdb:
+        container_name: basketdb
+        restart: always
+        ports:
+            - "6379:6379"
+    orderdb:
+        container_name: orderdb
+        ports:
+            - "1433:1433"
+        environment:
+            SA_PASSWORD: "Admin@123"
+            ACCEPT_EULA: "Y"
+
+    rabbitmq:
+        container_name: rabbitmq
+        restart: always
+        ports:
+            - "5672:5672"
+            - "15672:15672"
+
+    catalog.api:
+        container_name: catalogapi
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Development
+            - "CatalogDatabaseSettings:ConnectionString=mongodb://catalogdb:27017"
+        depends_on:
+            - catalogdb
+        ports:
+            - "8000:80"
+        volumes:
+            - ~/.aspnet/https:/root/.aspnet/https
+            - ~/.microsoft/usersecrets:/root/.microsoft/usersecrets
+
+    basket.api:
+        container_name: basketapi
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Development
+            - "ConnectionStrings:Redis=basketdb:6379"
+            - "EventBus:HostName=rabbitmq"
+        depends_on:
+            - basketdb
+            - rabbitmq
+        ports:
+            - "8001:80"
+        volumes:
+            - ~/.aspnet/https:/root/.aspnet/https
+            - ~/.microsoft/usersecrets:/root/.microsoft/usersecrets
+
+    ordering.api:
+        container_name: orderapi
+        restart: on-failure
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Development
+            - "ConnectionStrings:OrderConnection=Server=orderdb;Database=OrderDb;User Id=sa;Password=Admin@123"
+            - "EventBus:HostName=rabbitmq"
+        depends_on:
+            - orderdb
+            - rabbitmq
+        ports:
+            - "8002:80"
+        volumes:
+            - ~/.aspnet/https:/root/.aspnet/https:ro
+            - ~/.microsoft/usersecrets:/root/.microsoft/usersecrets:ro
+
+    ocelotapigateway:
+        container_name: ocelotapigateway
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Development
+        depends_on:
+            - catalog.api
+            - basket.api
+            - ordering.api
+        ports:
+            - "8080:80"
+        volumes:
+            - ~/.aspnet/https:/root/.aspnet/https:ro
+            - ~/.microsoft/usersecrets:/root/.microsoft/usersecrets:ro
+
+    shoppingweb:
+        container_name: shoppingweb
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Development
+            - "ApiSettings:BaseAddress=ocelotapigateway"
+        depends_on:
+            - ocelotapigateway
+            - catalog.api
+            - basket.api
+            - ordering.api
+        ports:
+            - "8003:80"
+        volumes:
+            - ~/.aspnet/https:/root/.aspnet/https:ro
+            - ~/.microsoft/usersecrets:/root/.microsoft/usersecrets:ro

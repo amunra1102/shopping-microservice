@@ -1,0 +1,48 @@
+version: '3.4'
+
+services:
+    catalogdb:
+        image: mongo
+
+    basketdb:
+        image: redis
+
+    orderdb:
+        image: mcr.microsoft.com/mssql/server
+
+    rabbitmq:
+        image: rabbitmq:3-management-alpine
+
+    catalog.api:
+        image: ${DOCKER_REGISTRY-}catalog
+        build:
+            context: .
+            dockerfile: src/Catalog/Catalog.API/Dockerfile
+
+    basket.api:
+        image: ${DOCKER_REGISTRY-}basket
+        build:
+            context: .
+            dockerfile: src/Basket/Basket.API/Dockerfile
+
+
+    ordering.api:
+        image: ${DOCKER_REGISTRY-}ordering
+        build:
+            context: .
+            dockerfile: src/Ordering/Ordering.API/Dockerfile
+
+
+    ocelotapigateway:
+        image: ${DOCKER_REGISTRY-}ocelotapigateway
+        build:
+            context: .
+            dockerfile: src/ApiGateway/OcelotAPIGateway/Dockerfile
+
+
+    shoppingweb:
+        image: ${DOCKER_REGISTRY-}shoppingweb
+        build:
+            context: .
+            dockerfile: src/WebApp/ShoppingWeb/Dockerfile
+
